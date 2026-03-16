@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Accommodations</title>
+    <style>
+        /* minimalist color palette */
+        :root {
+            --bg-color: #f9fafb;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --primary-accent: #3b82f6;
+            --admin-bg: #eff6ff;
+            --success-color: #10b981;
+        }
+
+        /* general ui font and basic reset */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            /* Prevents text highlighting to add to the "locked down" feel */
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* admin button styles */
+        .admin-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .admin-btn:hover {
+            background: var(--border-color);
+            color: var(--text-main);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 40px;
+        }
+
+        .event-title {
+            color: var(--primary-accent);
+            font-weight: 700;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            margin-top: 0;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        /* highlighted search bar */
+        .search-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .search-container input[type="text"] {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid var(--primary-accent);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            /* Allow text selection inside inputs only */
+            user-select: text; 
+            -webkit-user-select: text;
+        }
+
+        .search-container input[type="text"]:focus {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        }
+
+        /* standard inputs for admin panel */
+        .admin-form input[type="text"], .admin-form input[type="url"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 10px;
+            user-select: text; 
+            -webkit-user-select: text;
+        }
+
+        .admin-form input[type="text"]:focus, .admin-form input[type="url"]:focus {
+            border-color: var(--primary-accent);
+        }
+
+        .admin-form input:disabled {
+            background-color: #e5e7eb;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* admin panel */
+        .admin-panel {
+            background: var(--admin-bg);
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            display: none;
+        }
+
+        .admin-panel h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #1e3a8a;
+            margin-bottom: 15px;
+        }
+
+        .admin-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: start;
+        }
+
+        .checkbox-wrapper {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            background-color: var(--primary-accent);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            height: 52px;
+        }
+
+        .submit-btn:hover {
+            background-color: #2563eb;
+        }
+        
+        .cancel-edit-btn {
+            background-color: #e5e7eb;
+            color: #4b5563;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            height: 52px;
+            display: none; /* hidden by default */
+        }
+
+        .cancel-edit-btn:hover {
+            background-color: #d1d5db;
+        }
+
+        .view-all-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .view-all-btn:hover {
+            background-color: #059669;
+        }
+
+        .admin-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            border-top: 1px solid #bfdbfe;
+            padding-top: 15px;
+        }
+
+        .close-admin {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        /* minimalist grid layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* clean cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .participant-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            /* Allow name to be copied */
+            user-select: text; 
+            -webkit-user-select: text;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            font-weight: 500;
+        }
+
+        .messenger-link {
+            color: var(--primary-accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .messenger-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Admin action buttons on cards */
+        .card-admin-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto; /* pushes it to the bottom */
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .edit-btn, .delete-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .edit-btn {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .edit-btn:hover {
+            background-color: #e5e7eb;
+        }
+
+        .delete-btn {
+            background-color: #fee2e2;
+            color: #ef4444;
+        }
+
+        .delete-btn:hover {
+            background-color: #fecaca;
+        }
+
+        .no-results {
+            text-align: center;
+            grid-column: 1 / -1;
+            color: var(--text-muted);
+            padding: 40px;
+        }
+
+        /* system messages */
+        .sys-message {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 20px;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 600px) {
+            .admin-form-grid {
+                grid-template-columns: 1fr;
+            }
+            .submit-btn, .cancel-edit-btn {
+                width: 100%;
+            }
+            .admin-footer {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="adminPanel" class="admin-panel">
+            <h2 id="adminPanelTitle">Admin Controls: Add Participant</h2>
+            <form id="addForm">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="ownHouseCheckbox">
+                    <label for="ownHouseCheckbox">Participant is staying at a Private Residence</label>
+                </div>
+                <div class="admin-form-grid">
+                    <input type="text" id="newName" placeholder="Full Name" required>
+                    <input type="text" id="newVenue" placeholder="Venue (e.g. Grand Hotel)" required>
+                    <input type="url" id="newMessenger" placeholder="Messenger Link (Optional)">
+                    <button type="submit" class="submit-btn" id="submitBtn">Add to List</button>
+                    <button type="button" class="cancel-edit-btn" id="cancelEditBtn">Cancel Edit</button>
+                </div>
+            </form>
+            
+            <div class="admin-footer">
+                <button type="button" id="viewAllBtn" class="view-all-btn">View All Participants</button>
+                <button id="closeAdminBtn" class="close-admin">Lock and Close Admin</button>
+            </div>
+        </div>
+
+        <button id="adminBtn" class="admin-btn">Admin Access</button>
+
+        <header>
+            <div class="event-title">Pioneer Service School 2026</div>
+            <h1>Participant Accommodations</h1>
+            <p class="subtitle">Search for your name to find your assigned venue and contact link.</p>
+            
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Type your name here...">
+            </div>
+        </header>
+
+        <div class="grid" id="accommodationsGrid">
+            </div>
+    </div>
+
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12') e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i')) e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j')) e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u')) e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's')) e.preventDefault();
+        });
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAylWXA3_ahimTKAhl1EmvXKe5_HeOVxn4",
+            authDomain: "pss-accommodation.firebaseapp.com",
+            projectId: "pss-accommodation",
+            storageBucket: "pss-accommodation.firebasestorage.app",
+            messagingSenderId: "1064267878211",
+            appId: "1:1064267878211:web:2874558351590d3902a9f6"
+        };
+
+        let app, db;
+        let participantsData = []; 
+        let isAdminLoggedIn = false;
+        let editingParticipantId = null;
+
+        const gridContainer = document.getElementById('accommodationsGrid');
+        const searchInput = document.getElementById('searchInput');
+
+        if (firebaseConfig.apiKey === "") {
+            gridContainer.innerHTML = '<div class="sys-message">⚠️ Waiting for Firebase configuration to be added to the code.</div>';
+        } else {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+
+            const accommodationsRef = collection(db, "accommodations");
+            
+            onSnapshot(accommodationsRef, (snapshot) => {
+                participantsData = [];
+                snapshot.forEach((doc) => {
+                    participantsData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                if (searchInput.value.trim() !== '' || gridContainer.children.length > 0) {
+                     if (searchInput.value.trim() === '') {
+                         renderCards(participantsData);
+                     } else {
+                         triggerSearch();
+                     }
+                }
+            }, (error) => {
+                console.error("Error fetching data: ", error);
+                gridContainer.innerHTML = '<div class="sys-message">Error connecting to database. Please make sure your Firestore database is created and rules are set.</div>';
+            });
+        }
+
+        const adminBtn = document.getElementById('adminBtn');
+        const adminPanel = document.getElementById('adminPanel');
+        const closeAdminBtn = document.getElementById('closeAdminBtn');
+        const addForm = document.getElementById('addForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const ownHouseCheckbox = document.getElementById('ownHouseCheckbox');
+        const venueInput = document.getElementById('newVenue');
+        const viewAllBtn = document.getElementById('viewAllBtn');
+        const adminPanelTitle = document.getElementById('adminPanelTitle');
+
+        // Admin unlock logic
+        adminBtn.addEventListener('click', () => {
+            const password = prompt("Enter Admin Password:");
+            if (password === "makoy") {
+                isAdminLoggedIn = true;
+                adminPanel.style.display = "block";
+                adminBtn.style.display = "none";
+                triggerSearch(); // re-render to show edit/delete buttons
+            } else if (password !== null) {
+                alert("Incorrect password.");
+            }
+        });
+
+        // Function to reset form back to "Add" mode
+        function resetFormState() {
+            addForm.reset();
+            venueInput.disabled = false;
+            editingParticipantId = null;
+            submitBtn.textContent = "Add to List";
+            adminPanelTitle.textContent = "Admin Controls: Add Participant";
+            cancelEditBtn.style.display = "none";
+        }
+
+        // Admin lock logic
+        closeAdminBtn.addEventListener('click', () => {
+            isAdminLoggedIn = false;
+            adminPanel.style.display = "none";
+            adminBtn.style.display = "block";
+            resetFormState();
+            searchInput.value = '';
+            renderCards(null); 
+        });
+
+        // View All logic
+        viewAllBtn.addEventListener('click', () => {
+            searchInput.value = ''; 
+            renderCards(participantsData); 
+        });
+
+        // Cancel Edit logic
+        cancelEditBtn.addEventListener('click', () => {
+            resetFormState();
+        });
+
+        // Private Residence Checkbox Logic
+        ownHouseCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                venueInput.value = "Private Residence";
+                venueInput.disabled = true;
+            } else {
+                venueInput.value = "";
+                venueInput.disabled = false;
+            }
+        });
+
+        // Form Submit Logic (Handles both Add and Edit)
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            if(!db) {
+                alert("Please add your Firebase config first!");
+                return;
+            }
+            
+            submitBtn.disabled = true;
+
+            const newName = document.getElementById('newName').value;
+            const finalVenue = ownHouseCheckbox.checked ? "Private Residence" : document.getElementById('newVenue').value;
+            const newMessenger = document.getElementById('newMessenger').value.trim();
+
+            try {
+                if (editingParticipantId) {
+                    // Update existing
+                    submitBtn.textContent = "Updating...";
+                    await updateDoc(doc(db, "accommodations", editingParticipantId), {
+                        name: newName,
+                        venue: finalVenue,
+                        messenger: newMessenger
+                    });
+                    alert(newName + " has been updated!");
+                } else {
+                    // Add new
+                    submitBtn.textContent = "Adding...";
+                    await addDoc(collection(db, "accommodations"), {
+                        name: newName,
+                        venue: finalVenue,
+                        messenger: newMessenger,
+                        timestamp: Date.now()
+                    });
+                    alert(newName + " has been added!");
+                }
+                
+                resetFormState();
+                
+            } catch (error) {
+                console.error("Error saving document: ", error);
+                alert("Error saving. Make sure your database rules allow writing.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = editingParticipantId ? "Update Participant" : "Add to List";
+            }
+        });
+
+        // Handle clicks on dynamically created Edit/Delete buttons using Event Delegation
+        gridContainer.addEventListener('click', async (e) => {
+            if (!isAdminLoggedIn) return;
+
+            // Delete action
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                const name = e.target.dataset.name;
+                
+                if (confirm(`Are you sure you want to permanently remove ${name}?`)) {
+                    try {
+                        await deleteDoc(doc(db, "accommodations", id));
+                        // The snapshot listener will automatically remove the card from the UI
+                    } catch (error) {
+                        console.error("Error removing: ", error);
+                        alert("Error removing participant.");
+                    }
+                }
+            }
+
+            // Edit action
+            if (e.target.classList.contains('edit-btn')) {
+                const id = e.target.dataset.id;
+                const participant = participantsData.find(p => p.id === id);
+                
+                if (participant) {
+                    editingParticipantId = participant.id;
+                    document.getElementById('newName').value = participant.name;
+                    document.getElementById('newMessenger').value = participant.messenger || '';
+                    
+                    if (participant.venue === "Private Residence") {
+                        ownHouseCheckbox.checked = true;
+                        venueInput.value = "Private Residence";
+                        venueInput.disabled = true;
+                    } else {
+                        ownHouseCheckbox.checked = false;
+                        venueInput.value = participant.venue;
+                        venueInput.disabled = false;
+                    }
+
+                    submitBtn.textContent = "Update Participant";
+                    adminPanelTitle.textContent = "Admin Controls: Edit Participant";
+                    cancelEditBtn.style.display = "block";
+                    
+                    // Smoothly scroll back to the top form
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        });
+
+        function renderCards(data) {
+            gridContainer.innerHTML = ''; 
+
+            if (data === null) {
+                return; 
+            }
+
+            if (data.length === 0) {
+                gridContainer.innerHTML = '<div class="no-results">No participant found.</div>';
+                return;
+            }
+
+            const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedData.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let messengerRow = '';
+                if (item.messenger && item.messenger !== "") {
+                    messengerRow = `
+                        <div class="detail-row">
+                            <span class="detail-label">Contact:</span>
+                            <a href="${item.messenger}" target="_blank" rel="noopener noreferrer" class="messenger-link">Message Here</a>
+                        </div>
+                    `;
+                }
+
+                // Add admin buttons block only if admin is logged in
+                let adminActionsRow = '';
+                if (isAdminLoggedIn) {
+                    adminActionsRow = `
+                        <div class="card-admin-actions">
+                            <button class="edit-btn" data-id="${item.id}">Edit</button>
+                            <button class="delete-btn" data-id="${item.id}" data-name="${item.name}">Remove</button>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <h3 class="participant-name">${item.name}</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Venue:</span>
+                        <span class="detail-value">${item.venue}</span>
+                    </div>
+                    ${messengerRow}
+                    ${adminActionsRow}
+                `;
+                gridContainer.appendChild(card);
+            });
+        }
+
+        function triggerSearch() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            // If admin is logged in and there's no search term, we might be looking at "View All"
+            // So we let it render. If regular user and no search term, keep it hidden.
+            if (searchTerm === '' && !isAdminLoggedIn && gridContainer.children.length === 0) {
+                renderCards(null);
+                return;
+            } else if (searchTerm === '' && gridContainer.children.length > 0) {
+                renderCards(participantsData); // Refreshes the view all list
+                return;
+            }
+            
+            const filteredData = participantsData.filter(item => 
+                item.name.toLowerCase().includes(searchTerm)
+            );
+            renderCards(filteredData);
+        }
+
+        renderCards(null);
+        searchInput.addEventListener('input', triggerSearch);
+
+    </script>
+</body>
+</html>
