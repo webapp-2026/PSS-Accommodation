@@ -25,7 +25,6 @@
             margin: 0;
             padding: 20px;
             line-height: 1.5;
-            /* Prevents text highlighting to add to the "locked down" feel */
             user-select: none; 
             -webkit-user-select: none;
         }
@@ -99,7 +98,6 @@
             transition: all 0.2s;
             margin-bottom: 10px;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-            /* Allow text selection inside inputs only */
             user-select: text; 
             -webkit-user-select: text;
         }
@@ -194,7 +192,7 @@
             cursor: pointer;
             transition: background-color 0.2s;
             height: 52px;
-            display: none; /* hidden by default */
+            display: none;
         }
 
         .cancel-edit-btn:hover {
@@ -263,7 +261,6 @@
             font-size: 18px;
             font-weight: 600;
             margin: 0 0 12px 0;
-            /* Allow name to be copied */
             user-select: text; 
             -webkit-user-select: text;
         }
@@ -298,7 +295,7 @@
         .card-admin-actions {
             display: flex;
             gap: 10px;
-            margin-top: auto; /* pushes it to the bottom */
+            margin-top: auto;
             padding-top: 15px;
             border-top: 1px dashed var(--border-color);
         }
@@ -430,6 +427,7 @@
         let app, db;
         let participantsData = []; 
         let isAdminLoggedIn = false;
+        let isViewingAll = false; // Added flag to track View All state
         let editingParticipantId = null;
 
         const gridContainer = document.getElementById('accommodationsGrid');
@@ -449,12 +447,13 @@
                     participantsData.push({ id: doc.id, ...doc.data() });
                 });
                 
-                if (searchInput.value.trim() !== '' || gridContainer.children.length > 0) {
-                     if (searchInput.value.trim() === '') {
-                         renderCards(participantsData);
-                     } else {
-                         triggerSearch();
-                     }
+                // Keep the view updated based on current state
+                if (searchInput.value.trim() !== '') {
+                    triggerSearch();
+                } else if (isViewingAll && isAdminLoggedIn) {
+                    renderCards(participantsData);
+                } else {
+                    renderCards(null);
                 }
             }, (error) => {
                 console.error("Error fetching data: ", error);
@@ -480,7 +479,7 @@
                 isAdminLoggedIn = true;
                 adminPanel.style.display = "block";
                 adminBtn.style.display = "none";
-                triggerSearch(); // re-render to show edit/delete buttons
+                triggerSearch(); 
             } else if (password !== null) {
                 alert("Incorrect password.");
             }
@@ -499,6 +498,7 @@
         // Admin lock logic
         closeAdminBtn.addEventListener('click', () => {
             isAdminLoggedIn = false;
+            isViewingAll = false; // Reset view all flag
             adminPanel.style.display = "none";
             adminBtn.style.display = "block";
             resetFormState();
@@ -508,6 +508,7 @@
 
         // View All logic
         viewAllBtn.addEventListener('click', () => {
+            isViewingAll = true; // Set view all flag
             searchInput.value = ''; 
             renderCards(participantsData); 
         });
@@ -575,7 +576,7 @@
             }
         });
 
-        // Handle clicks on dynamically created Edit/Delete buttons using Event Delegation
+        // Handle clicks on dynamically created Edit/Delete buttons
         gridContainer.addEventListener('click', async (e) => {
             if (!isAdminLoggedIn) return;
 
@@ -587,7 +588,6 @@
                 if (confirm(`Are you sure you want to permanently remove ${name}?`)) {
                     try {
                         await deleteDoc(doc(db, "accommodations", id));
-                        // The snapshot listener will automatically remove the card from the UI
                     } catch (error) {
                         console.error("Error removing: ", error);
                         alert("Error removing participant.");
@@ -619,7 +619,6 @@
                     adminPanelTitle.textContent = "Admin Controls: Edit Participant";
                     cancelEditBtn.style.display = "block";
                     
-                    // Smoothly scroll back to the top form
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }
@@ -679,16 +678,22 @@
 
         function triggerSearch() {
             const searchTerm = searchInput.value.toLowerCase().trim();
-            // If admin is logged in and there's no search term, we might be looking at "View All"
-            // So we let it render. If regular user and no search term, keep it hidden.
-            if (searchTerm === '' && !isAdminLoggedIn && gridContainer.children.length === 0) {
-                renderCards(null);
-                return;
-            } else if (searchTerm === '' && gridContainer.children.length > 0) {
-                renderCards(participantsData); // Refreshes the view all list
+            
+            // If the search is empty...
+            if (searchTerm === '') {
+                // ...only show everyone if the View All button was clicked
+                if (isViewingAll && isAdminLoggedIn) {
+                    renderCards(participantsData);
+                } else {
+                    // ...otherwise hide everything
+                    renderCards(null);
+                }
                 return;
             }
             
+            // The moment they start typing, they are no longer in "View All" mode
+            isViewingAll = false;
+
             const filteredData = participantsData.filter(item => 
                 item.name.toLowerCase().includes(searchTerm)
             );
