@@ -268,7 +268,7 @@
         .detail-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 8px;
             font-size: 14px;
         }
@@ -279,6 +279,7 @@
 
         .detail-value {
             font-weight: 500;
+            text-align: right;
         }
 
         .messenger-link {
@@ -291,13 +292,30 @@
             text-decoration: underline;
         }
 
+        /* Kingdom Hall Directions Button */
+        .directions-link {
+            color: var(--primary-accent);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            padding: 10px;
+            background-color: #eff6ff;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .directions-link:hover {
+            background-color: #dbeafe;
+        }
+
         /* Admin action buttons on cards */
         .card-admin-actions {
             display: flex;
             gap: 10px;
-            margin-top: auto;
-            padding-top: 15px;
-            border-top: 1px dashed var(--border-color);
+            margin-top: 15px;
         }
 
         .edit-btn, .delete-btn {
@@ -427,7 +445,7 @@
         let app, db;
         let participantsData = []; 
         let isAdminLoggedIn = false;
-        let isViewingAll = false; // Added flag to track View All state
+        let isViewingAll = false; 
         let editingParticipantId = null;
 
         const gridContainer = document.getElementById('accommodationsGrid');
@@ -447,7 +465,6 @@
                     participantsData.push({ id: doc.id, ...doc.data() });
                 });
                 
-                // Keep the view updated based on current state
                 if (searchInput.value.trim() !== '') {
                     triggerSearch();
                 } else if (isViewingAll && isAdminLoggedIn) {
@@ -498,7 +515,7 @@
         // Admin lock logic
         closeAdminBtn.addEventListener('click', () => {
             isAdminLoggedIn = false;
-            isViewingAll = false; // Reset view all flag
+            isViewingAll = false; 
             adminPanel.style.display = "none";
             adminBtn.style.display = "block";
             resetFormState();
@@ -508,7 +525,7 @@
 
         // View All logic
         viewAllBtn.addEventListener('click', () => {
-            isViewingAll = true; // Set view all flag
+            isViewingAll = true; 
             searchInput.value = ''; 
             renderCards(participantsData); 
         });
@@ -529,7 +546,7 @@
             }
         });
 
-        // Form Submit Logic (Handles both Add and Edit)
+        // Form Submit Logic
         addForm.addEventListener('submit', async (e) => {
             e.preventDefault(); 
             if(!db) {
@@ -545,7 +562,6 @@
 
             try {
                 if (editingParticipantId) {
-                    // Update existing
                     submitBtn.textContent = "Updating...";
                     await updateDoc(doc(db, "accommodations", editingParticipantId), {
                         name: newName,
@@ -554,7 +570,6 @@
                     });
                     alert(newName + " has been updated!");
                 } else {
-                    // Add new
                     submitBtn.textContent = "Adding...";
                     await addDoc(collection(db, "accommodations"), {
                         name: newName,
@@ -605,10 +620,12 @@
                     document.getElementById('newName').value = participant.name;
                     document.getElementById('newMessenger').value = participant.messenger || '';
                     
-                    if (participant.venue === "Private Residence") {
-                        ownHouseCheckbox.checked = true;
-                        venueInput.value = "Private Residence";
-                        venueInput.disabled = true;
+                    if (participant.venue === "Private Residence" || participant.venue === "Pending Confirmation" || participant.venue === "TBA") {
+                        if (participant.venue === "Private Residence") ownHouseCheckbox.checked = true;
+                        else ownHouseCheckbox.checked = false;
+                        
+                        venueInput.value = participant.venue;
+                        venueInput.disabled = ownHouseCheckbox.checked;
                     } else {
                         ownHouseCheckbox.checked = false;
                         venueInput.value = participant.venue;
@@ -638,10 +655,15 @@
 
             const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name));
 
+            // Universal Kingdom Hall location
+            const kingdomHallLocation = encodeURIComponent("8XQ5+5RQ, Bato - Bontoc Rd, Bontoc, Southern Leyte");
+            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${kingdomHallLocation}`;
+
             sortedData.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 
+                // Messenger Link
                 let messengerRow = '';
                 if (item.messenger && item.messenger !== "") {
                     messengerRow = `
@@ -652,7 +674,7 @@
                     `;
                 }
 
-                // Add admin buttons block only if admin is logged in
+                // Admin Buttons
                 let adminActionsRow = '';
                 if (isAdminLoggedIn) {
                     adminActionsRow = `
@@ -670,6 +692,9 @@
                         <span class="detail-value">${item.venue}</span>
                     </div>
                     ${messengerRow}
+                    
+                    <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" class="directions-link">📍 Directions to Kingdom Hall</a>
+                    
                     ${adminActionsRow}
                 `;
                 gridContainer.appendChild(card);
@@ -679,19 +704,15 @@
         function triggerSearch() {
             const searchTerm = searchInput.value.toLowerCase().trim();
             
-            // If the search is empty...
             if (searchTerm === '') {
-                // ...only show everyone if the View All button was clicked
                 if (isViewingAll && isAdminLoggedIn) {
                     renderCards(participantsData);
                 } else {
-                    // ...otherwise hide everything
                     renderCards(null);
                 }
                 return;
             }
             
-            // The moment they start typing, they are no longer in "View All" mode
             isViewingAll = false;
 
             const filteredData = participantsData.filter(item => 
