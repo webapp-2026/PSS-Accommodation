@@ -57,7 +57,7 @@
 
         header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             padding-top: 40px;
         }
 
@@ -104,6 +104,49 @@
 
         .search-container input[type="text"]:focus {
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        }
+
+        /* Global Action Buttons (Map & Directions) */
+        .global-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .global-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .directions-btn {
+            background-color: #eff6ff;
+            color: var(--primary-accent);
+            border: 1px solid #bfdbfe;
+        }
+
+        .directions-btn:hover {
+            background-color: #dbeafe;
+        }
+
+        .map-btn {
+            background-color: #f0fdf4;
+            color: var(--success-color);
+            border: 1px solid #bbf7d0;
+        }
+
+        .map-btn:hover {
+            background-color: #dcfce7;
         }
 
         /* standard inputs for admin panel */
@@ -292,30 +335,13 @@
             text-decoration: underline;
         }
 
-        /* Kingdom Hall Directions Button */
-        .directions-link {
-            color: var(--primary-accent);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            display: block;
-            text-align: center;
-            margin-top: 12px;
-            padding: 10px;
-            background-color: #eff6ff;
-            border-radius: 8px;
-            transition: background-color 0.2s;
-        }
-
-        .directions-link:hover {
-            background-color: #dbeafe;
-        }
-
         /* Admin action buttons on cards */
         .card-admin-actions {
             display: flex;
             gap: 10px;
             margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-color);
         }
 
         .edit-btn, .delete-btn {
@@ -362,6 +388,60 @@
             grid-column: 1 / -1;
         }
 
+        /* Map Popup Modal */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(17, 24, 39, 0.8); /* dark overlay */
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; 
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            margin-top: -5px;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: #111827;
+            text-decoration: none;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+        }
+
         @media (max-width: 600px) {
             .admin-form-grid {
                 grid-template-columns: 1fr;
@@ -373,12 +453,29 @@
                 flex-direction: column;
                 gap: 15px;
             }
+            .global-actions {
+                flex-direction: column;
+            }
+            .global-btn {
+                width: 100%;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <div id="mapModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" id="closeModalBtn">×</span>
+                <h2>Accommodations Map</h2>
+                
+                <img src="map.jpg" alt="Map of Accommodations" onerror="this.onerror=null; this.src='https://placehold.co/800x600?text=Please+place+map.jpg+in+the+same+folder';">
+                
+            </div>
+        </div>
+
         <div id="adminPanel" class="admin-panel">
             <h2 id="adminPanelTitle">Admin Controls: Add Participant</h2>
             <form id="addForm">
@@ -412,6 +509,11 @@
                 <input type="text" id="searchInput" placeholder="Type your name here...">
             </div>
         </header>
+
+        <div class="global-actions">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=8XQ5%2B5RQ,+Bato+-+Bontoc+Rd,+Bontoc,+Southern+Leyte" target="_blank" rel="noopener noreferrer" class="global-btn directions-btn">📍 Directions to Kingdom Hall</a>
+            <button id="viewMapBtn" class="global-btn map-btn">🗺️ View Accommodations Map</button>
+        </div>
 
         <div class="grid" id="accommodationsGrid">
             </div>
@@ -477,6 +579,26 @@
                 gridContainer.innerHTML = '<div class="sys-message">Error connecting to database. Please make sure your Firestore database is created and rules are set.</div>';
             });
         }
+
+        // --- Modal Logic ---
+        const modal = document.getElementById("mapModal");
+        const btn = document.getElementById("viewMapBtn");
+        const span = document.getElementById("closeModalBtn");
+
+        btn.onclick = function() {
+            modal.style.display = "block";
+        }
+
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+        // -------------------
 
         const adminBtn = document.getElementById('adminBtn');
         const adminPanel = document.getElementById('adminPanel');
@@ -655,10 +777,6 @@
 
             const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name));
 
-            // Universal Kingdom Hall location
-            const kingdomHallLocation = encodeURIComponent("8XQ5+5RQ, Bato - Bontoc Rd, Bontoc, Southern Leyte");
-            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${kingdomHallLocation}`;
-
             sortedData.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -692,9 +810,6 @@
                         <span class="detail-value">${item.venue}</span>
                     </div>
                     ${messengerRow}
-                    
-                    <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" class="directions-link">📍 Directions to Kingdom Hall</a>
-                    
                     ${adminActionsRow}
                 `;
                 gridContainer.appendChild(card);
