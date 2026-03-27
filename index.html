@@ -442,7 +442,12 @@
             display: block;
         }
 
+        /* Mobile Adjustments (Option A implementation) */
         @media (max-width: 600px) {
+            .container {
+                display: flex;
+                flex-direction: column;
+            }
             .admin-form-grid {
                 grid-template-columns: 1fr;
             }
@@ -453,8 +458,14 @@
                 flex-direction: column;
                 gap: 15px;
             }
+            /* Reordering the elements so grid appears above actions */
+            header { order: 1; }
+            #adminPanel { order: 2; margin-bottom: 20px; }
+            .grid { order: 3; }
             .global-actions {
                 flex-direction: column;
+                order: 4;
+                margin-top: 20px;
             }
             .global-btn {
                 width: 100%;
@@ -830,9 +841,14 @@
             
             isViewingAll = false;
 
-            const filteredData = participantsData.filter(item => 
-                item.name.toLowerCase().includes(searchTerm)
-            );
+            // Split search input by spaces and filter out empty strings
+            const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
+            
+            const filteredData = participantsData.filter(item => {
+                const lowerName = item.name.toLowerCase();
+                // Ensure EVERY part of the search term is found in the participant's name
+                return searchTerms.every(term => lowerName.includes(term));
+            });
             renderCards(filteredData);
         }
 
