@@ -242,6 +242,33 @@
             background-color: #d1d5db;
         }
 
+        /* Admin Venue Filter */
+        .admin-filters {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #bfdbfe;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-filters label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e3a8a;
+        }
+
+        .admin-filters select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            outline: none;
+            min-width: 200px;
+            background-color: white;
+            cursor: pointer;
+        }
+
         .view-all-btn {
             background-color: var(--success-color);
             color: white;
@@ -442,7 +469,7 @@
             display: block;
         }
 
-        /* Mobile Adjustments (Option A implementation) */
+        /* Mobile Adjustments */
         @media (max-width: 600px) {
             .container {
                 display: flex;
@@ -453,6 +480,10 @@
             }
             .submit-btn, .cancel-edit-btn {
                 width: 100%;
+            }
+            .admin-filters {
+                flex-direction: column;
+                align-items: stretch;
             }
             .admin-footer {
                 flex-direction: column;
@@ -502,6 +533,13 @@
                     <button type="button" class="cancel-edit-btn" id="cancelEditBtn">Cancel Edit</button>
                 </div>
             </form>
+
+            <div class="admin-filters">
+                <label for="venueFilter">Filter by Venue:</label>
+                <select id="venueFilter">
+                    <option value="">All Venues</option>
+                </select>
+            </div>
             
             <div class="admin-footer">
                 <button type="button" id="viewAllBtn" class="view-all-btn">View All Participants</button>
@@ -563,6 +601,7 @@
 
         const gridContainer = document.getElementById('accommodationsGrid');
         const searchInput = document.getElementById('searchInput');
+        const venueFilter = document.getElementById('venueFilter');
 
         if (firebaseConfig.apiKey === "") {
             gridContainer.innerHTML = '<div class="sys-message">⚠️ Waiting for Firebase configuration to be added to the code.</div>';
@@ -578,17 +617,19 @@
                     participantsData.push({ id: doc.id, ...doc.data() });
                 });
                 
-                if (searchInput.value.trim() !== '') {
-                    triggerSearch();
-                } else if (isViewingAll && isAdminLoggedIn) {
-                    renderCards(participantsData);
-                } else {
-                    renderCards(null);
-                }
+                updateVenueFilterOptions();
+                applyFilters();
             }, (error) => {
                 console.error("Error fetching data: ", error);
                 gridContainer.innerHTML = '<div class="sys-message">Error connecting to database. Please make sure your Firestore database is created and rules are set.</div>';
             });
+        }
+
+        // --- Helper Function: Normalize Venue String ---
+        // Removes commas, extra spaces, and makes it lowercase to find exact matches safely
+        function getNormalizedVenue(venue) {
+            if (!venue) return "";
+            return venue.replace(/,/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
         }
 
         // --- Modal Logic ---
@@ -629,10 +670,105 @@
                 isAdminLoggedIn = true;
                 adminPanel.style.display = "block";
                 adminBtn.style.display = "none";
-                triggerSearch(); 
+                updateVenueFilterOptions();
+                applyFilters(); 
             } else if (password !== null) {
                 alert("Incorrect password.");
             }
+        });
+
+        // Function to update the dropdown with available venues dynamically, removing duplicates
+        function updateVenueFilterOptions() {
+            const currentSelection = venueFilter.value;
+            const normalizedCurrent = getNormalizedVenue(currentSelection);
+
+            const venueMap = new Map();
+            participantsData.forEach(p => {
+                if (p.venue) {
+                    const norm = getNormalizedVenue(p.venue);
+                    if (!venueMap.has(norm)) {
+                        // Save a clean display version (just trim leading/trailing spaces)
+                        venueMap.set(norm, p.venue.trim());
+                    }
+                }
+            });
+
+            // Get unique, clean venue names and sort them alphabetically
+            const uniqueVenues = Array.from(venueMap.values()).sort();
+            
+            venueFilter.innerHTML = '<option value="">All Venues</option>';
+            let reselectValue = "";
+
+            uniqueVenues.forEach(venue => {
+                const option = document.createElement('option');
+                option.value = venue;
+                option.textContent = venue;
+                venueFilter.appendChild(option);
+
+                // Check if this newly generated option matches what was previously selected
+                if (getNormalizedVenue(venue) === normalizedCurrent) {
+                    reselectValue = venue;
+                }
+            });
+            
+            // Keep the selected option active if it still exists after database update
+            if (reselectValue !== "") {
+                venueFilter.value = reselectValue;
+            }
+        }
+
+        // Master function to handle Search, Filter, and View All states
+        function applyFilters() {
+            let dataToRender = participantsData;
+            let shouldRender = false;
+
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const selectedVenue = venueFilter.value;
+            const normalizedSelectedVenue = getNormalizedVenue(selectedVenue);
+
+            // 1. Check Text Search
+            if (searchTerm !== '') {
+                shouldRender = true;
+                const searchTerms = searchTerm.split(/\s+/).filter(t => t.length > 0);
+                dataToRender = dataToRender.filter(item => {
+                    const lowerName = item.name.toLowerCase();
+                    return searchTerms.every(term => lowerName.includes(term));
+                });
+            }
+
+            // 2. Check Venue Filter (Admin only)
+            if (isAdminLoggedIn && selectedVenue !== '') {
+                shouldRender = true;
+                dataToRender = dataToRender.filter(item => getNormalizedVenue(item.venue) === normalizedSelectedVenue);
+            }
+
+            // 3. Check "View All" state
+            if (isViewingAll && isAdminLoggedIn) {
+                shouldRender = true;
+            }
+
+            // Render Results or hide grid
+            if (shouldRender) {
+                renderCards(dataToRender);
+            } else {
+                renderCards(null);
+            }
+        }
+
+        // Search Input trigger
+        searchInput.addEventListener('input', () => {
+            if (searchInput.value.trim() !== '') {
+                isViewingAll = false;
+            }
+            applyFilters();
+        });
+
+        // Venue Filter Dropdown trigger
+        venueFilter.addEventListener('change', () => {
+            if (venueFilter.value !== '') {
+                isViewingAll = false; 
+            }
+            applyFilters();
         });
 
         // Function to reset form back to "Add" mode
@@ -653,14 +789,16 @@
             adminBtn.style.display = "block";
             resetFormState();
             searchInput.value = '';
-            renderCards(null); 
+            venueFilter.value = '';
+            applyFilters(); 
         });
 
         // View All logic
         viewAllBtn.addEventListener('click', () => {
             isViewingAll = true; 
             searchInput.value = ''; 
-            renderCards(participantsData); 
+            venueFilter.value = ''; 
+            applyFilters(); 
         });
 
         // Cancel Edit logic
@@ -827,33 +965,7 @@
             });
         }
 
-        function triggerSearch() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            
-            if (searchTerm === '') {
-                if (isViewingAll && isAdminLoggedIn) {
-                    renderCards(participantsData);
-                } else {
-                    renderCards(null);
-                }
-                return;
-            }
-            
-            isViewingAll = false;
-
-            // Split search input by spaces and filter out empty strings
-            const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
-            
-            const filteredData = participantsData.filter(item => {
-                const lowerName = item.name.toLowerCase();
-                // Ensure EVERY part of the search term is found in the participant's name
-                return searchTerms.every(term => lowerName.includes(term));
-            });
-            renderCards(filteredData);
-        }
-
-        renderCards(null);
-        searchInput.addEventListener('input', triggerSearch);
+        applyFilters();
 
     </script>
 </body>
